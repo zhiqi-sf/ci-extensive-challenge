@@ -1,0 +1,54 @@
+name: CI Extensive Automation
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  label-issues:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label issues by keyword
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = [];
+            if (/error/i.test(issue.title + ' ' + issue.body)) {
+              labels.push('bug');
+            }
+            if (/add/i.test(issue.title + ' ' + issue.body)) {
+              labels.push('feature');
+            }
+            if (labels.length > 0) {
+              await github.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels
+              });
+            }
+
+  dependabot-automerge:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Automerge Dependabot patch PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (
+              pr.user.login === 'dependabot[bot]' &&
+              /^update.*patch/i.test(pr.title)
+            ) {
+              await github.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+            }
