@@ -1,0 +1,34 @@
+name: Issue Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label new issues based on keywords
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labelsToAdd = [];
+            const text = (issue.title + ' ' + (issue.body || '')).toLowerCase();
+            if (text.includes('error')) {
+              labelsToAdd.push('bug');
+            }
+            if (text.includes('add')) {
+              labelsToAdd.push('feature');
+            }
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+            }
